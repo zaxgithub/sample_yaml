@@ -1,0 +1,2339 @@
+swagger: "2.0"
+
+################################################################################
+#                              API Information                                 #
+################################################################################
+info:
+  version: "1.1"
+  title: Affinity DaaaS API
+  description: |
+    Access the full suite of Affinity DaaaS products.
+
+    ## Limits
+    Be nice. If you're sending too many requests too quickly, we'll send back a
+    `503` error code (server unavailable).
+    You are limited to 5000 requests per hour per `access_token` overall.
+    Practically, this means you should (when possible) authenticate
+    users so that limits are well outside the reach of a given user.
+
+    ## Deleting Objects
+    We do our best to have all our URLs be
+    [RESTful](http://en.wikipedia.org/wiki/Representational_state_transfer).
+    Every endpoint (URL) may support one of four different http verbs. GET
+    requests fetch information about an object, POST requests create objects,
+    PUT requests update objects, and finally DELETE requests will delete
+    objects.
+
+    ## Structure
+
+    ### The Envelope
+    Every response is contained by an envelope. That is, each response has a
+    predictable set of keys with which you can expect to interact:
+    ```json
+    {
+        "meta": {
+            "code": 200
+        },
+        "data": {
+            ...
+        },
+        "pagination": {
+            "next_url": "...",
+            "next_max_id": "13872296"
+        }
+    }
+    ```
+
+    #### META
+    The meta key is used to communicate extra information about the response to
+    the developer. If all goes well, you'll only ever see a code key with value
+    200. However, sometimes things go wrong, and in that case you might see a
+    response like:
+    ```json
+    {
+        "meta": {
+            "error_type": "OAuthException",
+            "code": 400,
+            "error_message": "..."
+        }
+    }
+    ```
+
+    #### DATA
+    The data key is the meat of the response. It may be a list or dictionary,
+    but either way this is where you'll find the data you requested.
+  termsOfService: https://api.affinitysolutions.com/terms/
+  contact:
+    name: API Support
+    url: https://api.affinitysolutions.com/support/
+    email: support@affinitysolutions.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+# during dev, should point to your local machine
+host: 0.0.0.0
+# basePath prefixes all resource paths
+basePath: /
+#
+schemes:
+  # tip: remove http to make production-grade
+  - http
+  - https
+
+consumes:
+  - application/json
+  - application/x-www-form-urlencoded
+
+# format of the responses to the client (Accepts)
+produces:
+  - application/json
+  - text/html
+
+#x-a127-config:
+#  dataapi.key: &apigeeProxyKey CONFIGURED
+#  dataapi.uri: &apigeeProxyUri CONFIGURED
+#x-a127-services:
+#  oauth2:
+#    provider: volos-oauth-apigee
+#    options:
+#      tokenLifetime: 3000000
+#      key: *apigeeProxyKey
+#      uri: *apigeeProxyUri
+#      validGrantTypes:
+#        - client_credentials
+#        - authorization_code
+#        - implicit_grant
+#        - password
+#      tokenPaths:  # These will be added to your paths section for you
+#        authorize: /authorize
+#        token: /accesstoken
+#        invalidate: /invalidate
+#        refresh: /refresh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# [begin] X-TYPES
+#
+
+x-types:
+
+  enumListStage: &enumListStage
+      - request
+      - upload
+      - staging
+      - destination
+      - download
+
+  enumListType: &enumListType
+      - upload
+      - audience
+      - generated
+      - internal
+
+  enumApiStatus: &enumApiStatus
+      - queued
+      - pending
+      - complete
+      - error
+
+#
+# [end] X-TYPES
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+
+parameters:
+  page:
+    name: page
+    in: query
+    type: integer
+    required: false
+    default: 1
+    description: Requested items page
+  per_page:
+    name: per_page
+    in: query
+    type: integer
+    required: false
+    enum:
+      - 10
+      - 25
+      - 50
+    default: 25
+    description: Number of items retrieved per page (50 max).
+  sort_dir:
+    name: sort_dir
+    in: query
+    type: string
+    required: false
+    enum:
+      - ASC
+      - DESC
+    default: ASC
+    description: The direction ascending/descending of the sort.
+  sort_by:
+    name: sort_by
+    in: query
+    type: string
+    required: false
+    description: The sorting field
+################################################################################
+#                                           Paths                              #
+################################################################################
+paths:
+
+  /brands:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: brands
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: search
+      description: Search brands by brand name
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: name
+          description: search is case insensitive and will search names that include phrase
+          in: query
+          required: false
+          type: string
+        - name: category_id
+          description: The category_id represented by the brand
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: mcc_code
+          description: MCC code represented by the brand
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort_by
+          description: the column you wish to sort the results by
+          in: query
+          required: false
+          type: string
+          enum:
+            - brand_name
+            - category_id
+            - time_created
+          default: brand_name
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+      responses:
+        '200':
+          description: sucessful response
+          schema:
+            $ref: '#/definitions/defaultBrandsArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /brands/{brand_id}:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: brands
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: getDetails
+      description: Get details of a single brand by the brand id.
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: brand_id
+          description: The unique identifier (brand_id) of the brand
+          in: path
+          required: true
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: sucessful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/brandsDetails'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /brands/{brand_id}/all:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: brands
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: getAllDetails
+      description: Get details of a single brand by the brand id.
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: brand_id
+          description: The unique identifier (brand_id) of the brand
+          in: path
+          required: true
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: sucessful response
+          schema:
+            type: object
+            items:
+              $ref: '#/definitions/brandsDetailsAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /categories:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: categories
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: search
+      description: Search categories by category name
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: name
+          description: search is case insensitive and will search names that include phrase
+          in: query
+          required: false
+          type: string
+        - name: afscatid
+          description: The Affinity category id of the category
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: category
+          description: The Affinity Category Name of the category
+          in: query
+          required: false
+          type: string
+        - name: mcc
+          description: MCC code represented by the brand
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort_by
+          description: the column you wish to sort the results by
+          in: query
+          required: false
+          type: string
+          enum:
+            - mcc
+            - afscatid
+            - category
+            - name
+            - time_created
+          default: name
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultCategoryArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /categories/{search_name}/{search_value}:
+    # binds a127 app logic to a route
+    x-swagger-router-controller: categories
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: searchByWildCard
+      description: Get records based on supplied category name.
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: search_name
+          description: What field we are searching
+          in: path
+          required: true
+          type: string
+          enum:
+            - category
+            - afscatid
+            - name
+            - mcc
+        - name: search_value
+          description: What we are searching for
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/defaultWildCardArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /contexts:
+    # used as the method name of the controller
+    x-swagger-router-controller: contexts
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: search
+      description: Search contexts by context name
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: name
+          description: search is case insensitive and will search types that include phrase
+          in: query
+          required: false
+          type: string
+        - name: brand_id
+          description: The associated brand ids that should be part of a context
+          in: query
+          required: false
+          type: integer
+        - name: comp_brand_id
+          description: The competitors of the brand
+          in: query
+          required: false
+          type: integer
+        - name: category_mcc
+          in: query
+          required: false
+          description: category mcc
+          type: integer
+        - name: category_brand_id
+          in: query
+          required: false
+          description: The collection of MCC codes
+          type: integer
+        - name: sort_by
+          description: the column you wish to sort the results by
+          in: query
+          required: false
+          type: string
+          enum:
+            - context_name
+            - list_id
+            - context_id
+          default: context_name
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/defaultContextsArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    post:
+      # used as the method name of the controller
+      operationId: create
+      description: Create a new context
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: context
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultContextWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultContextReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /contexts/{context_id}:
+    # used as the method name of the controller
+    x-swagger-router-controller: contexts
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: getDetails
+      description: Get a record based on supplied context id
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: context_id
+          description: The unique identifier of the context
+          in: path
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultWildCardArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    put:
+      # used as the method name of the controller
+      operationId: update
+      description: Update a record with the supplied context id
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: context_id
+          description: The unique identifier of the context
+          in: path
+          required: true
+          type: integer
+          format: int32
+        - name: context
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultContextWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultContextReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /campaigns:
+    # used as the method name of the controller
+    x-swagger-router-controller: campaigns
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: search
+      description: Search campaigns by campaign name
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: name
+          description: search is case insensitive and will search names that include phrase
+          in: query
+          required: false
+          type: string
+        - name: list_id
+          description: Unique ID represented by the list
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: context_id
+          description: Unique ID represented by the context
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: sort_by
+          description: the column you wish to sort the results by
+          in: query
+          required: false
+          type: string
+          enum:
+            - campaign_name
+            - list_ids
+            - context_id
+          default: campaign_name
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/defaultCampaignsArray'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    post:
+      # used as the method name of the controller
+      operationId: create
+      description: Create a new campaign
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: campaign
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultCampaignWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultCampaignReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /campaigns/{campaign_id}:
+    # used as the method name of the controller
+    x-swagger-router-controller: campaigns
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: getDetails
+      description: Get a record for a specific campaign
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: campaign_id
+          description: The unique identifier of the campaign
+          in: path
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultCampaignReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    put:
+      # used as the method name of the controller
+      operationId: update
+      description: Update a record with the supplied campaign id
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: campaign_id
+          description: The unique identifier of the campaign
+          in: path
+          required: true
+          type: integer
+          format: int32
+        - name: campaign
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultCampaignWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultCampaignReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/marketshare:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: marketshare_search
+      description: Searches market share reports and returns few fields for each result matches
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_name
+          description: Search by name
+          in: query
+          required: false
+          type: string
+        - name: context_id
+          description: A lookup based on context_id
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: list_id
+          description: A lookup based on list_id
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: start_date
+          description: Start date
+          in: query
+          type: string
+          required: false
+          format: date-time
+        - name: end_date
+          description: End date
+          in: query
+          type: string
+          required: false
+          format: date-time
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+        - $ref: '#/parameters/sort_by'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/defaultMarketShareReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    post:
+      # used as the method name of the controller
+      operationId: marketshare_create
+      description: Create a Marketshare report
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: marketshare
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultMarketShareWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketShareReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/marketshare/{report_id}:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: marketshare_getDetails
+      description: Gets the marketshare report for the specified report_id
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the campaign
+          in: path
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketShareDetailsAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    put:
+      # used as the method name of the controller
+      operationId: marketshare_update
+      description: Updates the martketshare report with the specified report_id
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the report
+          in: path
+          required: true
+          type: integer
+          format: int32
+        - name: marketshare
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultMarketShareWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketShareReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/marketshare/{report_id}/pull:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: marketshare_pullReport
+      description: Fetches and displays the report results
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the report
+          in: path
+          required: true
+          type: integer
+          format: int32
+        - name: download
+          description: Lets users download a file that contains the results if included in query
+          in: query
+          required: false
+          type: boolean
+          enum:
+            - true
+            - false
+          default: false
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketSharePullReport'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/marketshare/{report_id}/clone:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    post:
+      # used as the method name of the controller
+      operationId: marketshare_clone
+      description: Copies the request parameters from an existing report and creates a new one
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: report_id
+          type: integer
+          format: int32
+          description: The unique identifier of a report
+          in: path
+          required: true
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketShareReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/marketshare/{report_id}/refresh:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    put:
+      # used as the method name of the controller
+      operationId: marketshare_refresh
+      description: Refreshes the given report with the most current data
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          type: integer
+          format: int32
+          description: The unique identifier of a report
+          in: path
+          required: true
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMarketShareReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# [begin] REPORTS MEASUREMENT
+#
+
+
+  /reports/measurement:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: measurement_search
+      description: Searches measurement reports and returns few fields for each result matches
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_name
+          description: Search by name
+          in: query
+          required: false
+          type: string
+        - name: context_id
+          description: A lookup based on context_id
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: list_id
+          description: A lookup based on list_id
+          in: query
+          required: false
+          type: integer
+          format: int32
+        - name: start_date
+          description: Start date
+          in: query
+          type: string
+          required: false
+          format: date-time
+        - name: end_date
+          description: End date
+          in: query
+          type: string
+          required: false
+          format: date-time
+        - $ref: '#/parameters/page'
+        - $ref: '#/parameters/per_page'
+        - $ref: '#/parameters/sort_dir'
+        - $ref: '#/parameters/sort_by'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/defaultMeasurementReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    post:
+      # used as the method name of the controller
+      operationId: measurement_create
+      description: Create a measurement report
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: measurement
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultMeasurementWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/measurement/{report_id}:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: measurement_getDetails
+      description: Gets the measurement report for the specified report_id
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the campaign
+          in: path
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementDetailsAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+    put:
+      # used as the method name of the controller
+      operationId: measurement_update
+      description: Updates the measurement report with the specified report_id
+      #security:
+      #  - oauth2: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the report
+          in: path
+          required: true
+          type: integer
+          format: int32
+        - name: measurement
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/defaultMeasurementWritable'
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementReadOnly'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/measurement/{report_id}/pull:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    get:
+      # used as the method name of the controller
+      operationId: measurement_pullReport
+      description: Fetches and displays the report results
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          description: The unique identifier of the report
+          in: path
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementPullReport'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/measurement/{report_id}/clone:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    post:
+      # used as the method name of the controller
+      operationId: measurement_clone
+      description: Copies the request parameters from an existing report and creates a new one
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: report_id
+          type: integer
+          format: int32
+          description: The unique identifier of a report
+          in: path
+          required: true
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+  /reports/measurement/{report_id}/refresh:
+    # used as the method name of the controller
+    x-swagger-router-controller: reports
+    x-a127-apply: {}
+    put:
+      # used as the method name of the controller
+      operationId: measurement_refresh
+      description: Refreshes the given report with the most current data
+      #security:
+      #  - oauth2: []
+      produces:
+        - application/json
+      parameters:
+        - name: report_id
+          type: integer
+          format: int32
+          description: The unique identifier of a report
+          in: path
+          required: true
+      responses:
+        '200':
+          description: successful response
+          schema:
+            $ref: '#/definitions/defaultMeasurementReadOnlyAll'
+        default:
+          description: unexpected error
+          schema:
+            $ref: '#/definitions/errors'
+
+#
+# [begin] REPORTS MEASUREMENT
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+#                                  Security                                    #
+################################################################################
+
+
+
+
+definitions:
+
+  defaultTimeCreated:
+    type: string
+    # format: date-time
+    description: date in UTC when record was initially created
+
+  defaultTimeModified:
+    type: string
+    # format: date-time
+    description: date in UTC when record was last changed
+
+  defaultTimeRefreshed:
+    type: string
+    format: date-time
+    description: date in UTC when associated records were last refreshed or updated
+
+  defaultRefID:
+    type: string
+    format: string
+    description: custom identifier unique to the client (API user)
+
+  defaultUUID:
+    type: string
+    description: 37 character universal unique identifier assigned by Affinity when the record was created
+    maxLength: 37
+
+  defaultID:
+    type: integer
+    format: int64
+    description: unique identifier assigned by Affinity when the record was created
+
+  defaultMCCarray:
+    type: array
+    description: A collection of MCC codes represented by this category
+    items:
+      type: object
+      properties:
+        mcc_code:
+          type: integer
+          format: int32
+        name:
+          type: string
+          description: The name of the specific MCC category
+
+  defaultCategoryArray:
+    type: array
+    description: A list of categories
+    items:
+      type: object
+      properties:
+        mcc:
+          type: integer
+          format: bigint
+          description: The MCC code of the category
+        afscatid:
+          type: integer
+          format: int32
+          description: The unique identifier representing the category
+        name:
+          type: string
+          description: The MCC name of the category
+        category:
+          type: string
+          description: The AFS category name of the category
+
+  defaultWildCardArray:
+    type: array
+    description: A list of categories
+    items:
+      type: object
+      properties:
+        mcc:
+          type: integer
+          format: bigint
+          description: The MCC code of the category
+        afscatid:
+          type: integer
+          format: int32
+          description: The unique identifier representing the category
+        name:
+          type: string
+          description: The MCC name of the category
+        category:
+          type: string
+          description: The AFS category name of the category
+
+
+  defaultCategoryMCCarray:
+    type: array
+    description: A list of categories
+    items:
+      type: object
+      properties:
+        category_id:
+          type: integer
+          format: int32
+          description: The unique identifier representing the category
+        name:
+          type: string
+          description: The name of the category
+        mccs:
+          $ref: '#/definitions/defaultMCCarray'
+
+  defaultBrandsArray:
+    type: array
+    description: A list of brands
+    items:
+      type: object
+      properties:
+        brand_id:
+          type: integer
+          # format: int32
+          description: The unique identifier representing the brand
+        name:
+          type: string
+          description: The name of the brand
+
+  brandsDetails:
+    description: Retail brands
+    allOf:
+    - $ref: '#/definitions/defaultBrandsDetails'
+    - $ref: '#/definitions/defaultTimes'
+
+  brandsDetailsAll:
+    description: Retail brands
+    allOf:
+    - $ref: '#/definitions/brandsDetails'
+    - $ref: '#/definitions/defaultUsageHistory'
+
+  defaultBrandsDetails:
+    type: object
+    properties:
+      brand_id:
+        type: integer
+        format: int64
+        description: unique identifier assigned by Affinity when the record was created
+      brand_name:
+        type: string
+        description: Name of the brand
+        maxLength: 255
+      competitors:
+        type: array
+        description: Suggested competitors as an array of brand ids
+        items:
+          type: object
+          properties:
+            brand_name:
+              type: string
+              description: The name of the brand
+            brand_id:
+              type: integer
+              format: int32
+              description: The unique identifier representing the brand
+      categories:
+        description: A list of categories as represented by transactions associated with this brand
+        $ref: '#/definitions/defaultCategoryMCCarray'
+
+
+  defaultUsageHistory:
+    type: array
+    description: The times and objects that reference this record
+    items:
+      type: object
+      properties:
+        usage_time:
+          type: string
+          format: date-time
+          description: date in UTC when record was initially created
+        usage_type:
+          type: string
+          enum:
+            - context
+            - report
+            - model
+            - campaign
+            - category
+          description: the type of object that contains the field which references this element
+        usage_method:
+          type: string
+          description: the field name referencing this element
+
+  defaultContextID:
+    type: object
+    properties:
+      context_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the context
+
+  defaultContextWritable:
+    type: object
+    properties:
+      context_name:
+        type: string
+        description: Name of the contexts
+        maxLength: 255
+      brand_ids:
+        type: array
+        items:
+          type: integer
+          format: int32
+        description: The brand ids associated with the context
+      comp_brand_ids:
+        type: array
+        items:
+          type: integer
+          format: int32
+        description: The competitors of the brand
+      categories:
+        type: array
+        items:
+          type: object
+          description: The collection of brands and/or MCC codes
+          properties:
+            mccs:
+              description: The collection of MCC codes
+              type: array
+              items:
+                type: integer
+                format: int32
+            brand_ids:
+              description: The collection of brand_ids
+              type: array
+              items:
+                type: integer
+                format: int32
+
+  defaultContextReadOnly:
+    allOf:
+      - $ref: '#/definitions/defaultContextID'
+      - $ref: '#/definitions/defaultContextWritable'
+      - $ref: '#/definitions/defaultTimes'
+
+  defaultContextsArray:
+    type: array
+    description: A list of contexts
+    items:
+      $ref: '#/definitions/defaultContextReadOnly'
+
+  defaultContextReadOnlyAll:
+    allOf:
+      - $ref: '#/definitions/defaultContextReadOnly'
+      - $ref: '#/definitions/defaultUsageHistory'
+
+  defaultCampaignID:
+    type: object
+    properties:
+      campaign_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the campaign
+
+
+  defaultCampaignWritable:
+    type: object
+    properties:
+      campaign_name:
+        type: string
+        description: Custom summary identifying a particular campaign
+      context_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the context used by the campaign
+      list_ids:
+        type: array
+        items:
+          type: integer
+          format: int32
+        description: The unique identifier representing the lists
+      dates:
+        type: object
+        description: The start and end dates associated with the campaign
+        properties:
+          start:
+            type: string
+            format: date-time
+            description: timestamp in UTC when campaign begins
+          end:
+            type: string
+            format: date-time
+            description: timestamp in UTC when campaign ends
+
+  defaultCampaignReadOnly:
+    allOf:
+      - $ref: '#/definitions/defaultCampaignID'
+      - $ref: '#/definitions/defaultCampaignWritable'
+      - $ref: '#/definitions/defaultTimes'
+
+  defaultCampaignsArray:
+    type: array
+    description: A list of campaigns
+    items:
+      $ref: '#/definitions/defaultCampaignReadOnly'
+
+  defaultCampaignReadOnlyAll:
+    allOf:
+    - $ref: '#/definitions/defaultCampaignReadOnly'
+    #- $ref: '#/definitions/defaultUsageHistory'
+
+  defaultMarketShareDetailsAll:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+        maxLength: 255
+        description: Name of the report
+      report_type:
+        type: string
+        maxLength: 255
+        description: Type of the report
+      context:
+        type: object
+        $ref: '#/definitions/defaultContextWritable'
+      list:
+        type: object
+        #$ref: '#'
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+        description: The period the report gets generated
+      breakout_online:
+        type: boolean
+        default: false
+
+  defaultMarketSharePullReportDetails:
+    type: object
+    properties:
+      list_source:
+        type: string
+      transaction_source:
+        type: string
+        enum:
+          - B&M
+          - ONLINE
+      pb_total_unique_cards:
+        type: integer
+        format: int32
+      cb_total_unique_cards:
+        type: integer
+        format: int32
+      category_total_unique_cards:
+        type: integer
+        format: int32
+      pb_total_spend:
+        type: number
+        format: float
+      cb_total_spend:
+        type: number
+        format: float
+      category_total_spend:
+        type: number
+        format: float
+      pb_total_transactions:
+        type: integer
+        format: int32
+      cb_total_transactions:
+        type: integer
+        format: int32
+      category_total_transactions:
+        type: integer
+        format: int32
+
+  defaultMarketSharePullReport:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+        maxLength: 255
+        description: Name of the report
+      report_type:
+        type: string
+        maxLength: 255
+        description: Type of the report
+      context:
+        type: object
+        $ref: '#/definitions/defaultContextWritable'
+      list:
+        type: object
+        #$ref: '#'
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+        description: The period the report gets generated
+      breakout_online:
+        type: boolean
+        default: false
+      results:
+        type: array
+        items:
+          $ref: '#/definitions/defaultMarketSharePullReportDetails'
+
+  defaultReportID:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the context
+
+  defaultMarketShareReadOnly:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+      context_id:
+        type: integer
+        format: int32
+        description: The context_id representing the report
+      list_id:
+        type: integer
+        format: int32
+        description: The list_id representing the report
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when campaign begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when campaign ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+
+
+
+  defaultMarketShareReadOnlyAll:
+    allOf:
+    - $ref: '#/definitions/defaultMarketShareReadOnly'
+    - $ref: '#/definitions/defaultTimes'
+
+  defaultMarketShareWritable:
+    type: object
+    properties:
+      report_name:
+        type: string
+        description: Custom summary identifying a particular campaign
+      report_type:
+        type: string
+        description: Type of report
+      campaign_id:
+        type: integer
+        format: int32
+        description: Campaign_ID
+      context_id:
+        type: integer
+        format: int32
+        description: Context_ID
+      list_id:
+        type: integer
+        format: int32
+        description: List_ID
+      start_date:
+        type: string
+        format: date
+        description: timestamp in UTC when campaign begins
+      end_date:
+        type: string
+        format: date
+        description: timestamp in UTC when campaign ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+      interval_start:
+        type: integer
+        format: int32
+        description:  -1=Sunday 0=Monday 1=Tuesday 2=Wednesday 3=Thursday 4=Friday 5=Saturday
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# [begin] MEASUREMENT REPORT DEFINITIONS
+#
+
+
+  defaultMeasurementDetailsAll:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+        maxLength: 255
+        description: Name of the report
+      report_type:
+        type: string
+        maxLength: 255
+        description: Type of the report
+      context:
+        type: object
+        $ref: '#/definitions/defaultContextWritable'
+      list:
+        type: object
+        #$ref: '#'
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+        description: The period the report gets generated
+      breakout_online:
+        type: boolean
+        default: false
+
+  defaultMeasurementPullReportDetails:
+    type: object
+    properties:
+      list_source:
+        type: string
+      transaction_source:
+        type: string
+        enum:
+          - B&M
+          - ONLINE
+      pb_total_unique_cards:
+        type: integer
+        format: int32
+      cb_total_unique_cards:
+        type: integer
+        format: int32
+      category_total_unique_cards:
+        type: integer
+        format: int32
+      pb_total_spend:
+        type: number
+        format: float
+      cb_total_spend:
+        type: number
+        format: float
+      category_total_spend:
+        type: number
+        format: float
+      pb_total_transactions:
+        type: integer
+        format: int32
+      cb_total_transactions:
+        type: integer
+        format: int32
+      category_total_transactions:
+        type: integer
+        format: int32
+
+  defaultMeasurementPullReport:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+        maxLength: 255
+        description: Name of the report
+      report_type:
+        type: string
+        maxLength: 255
+        description: Type of the report
+      context:
+        type: object
+        $ref: '#/definitions/defaultContextWritable'
+      list:
+        type: object
+        #$ref: '#'
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when report ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+        description: The period the report gets generated
+      breakout_online:
+        type: boolean
+        default: false
+      results:
+        type: array
+        items:
+          $ref: '#/definitions/defaultMeasurementPullReportDetails'
+
+
+  defaultMeasurementReadOnly:
+    type: object
+    properties:
+      report_id:
+        type: integer
+        format: int32
+        description: The unique identifier representing the report
+      report_name:
+        type: string
+      context_id:
+        type: integer
+        format: int32
+        description: The context_id representing the report
+      list_id:
+        type: integer
+        format: int32
+        description: The list_id representing the report
+      start_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when campaign begins
+      end_date:
+        type: string
+        format: date-time
+        description: timestamp in UTC when campaign ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+
+
+
+  defaultMeasurementReadOnlyAll:
+    allOf:
+    - $ref: '#/definitions/defaultMeasurementReadOnly'
+    - $ref: '#/definitions/defaultTimes'
+
+  defaultMeasurementWritable:
+    type: object
+    properties:
+      report_name:
+        type: string
+        description: Custom summary identifying a particular campaign
+      report_type:
+        type: string
+        description: Type of report
+      campaign_id:
+        type: integer
+        format: int32
+        description: Campaign_ID
+      context_id:
+        type: integer
+        format: int32
+        description: Context_ID
+      list_id:
+        type: integer
+        format: int32
+        description: List_ID
+      start_date:
+        type: string
+        format: date
+        description: timestamp in UTC when campaign begins
+      end_date:
+        type: string
+        format: date
+        description: timestamp in UTC when campaign ends
+      interval:
+        type: string
+        enum:
+          - daily
+          - weekly
+          - monthly
+          - 3months
+          - 6months
+          - annual
+        default: weekly
+      interval_start:
+        type: integer
+        format: int32
+        description:  -1=Sunday 0=Monday 1=Tuesday 2=Wednesday 3=Thursday 4=Friday 5=Saturday
+
+
+
+#
+# [end] MEASUREMENT REPORT DEFINITIONS
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+  defaultIDs:
+    type: object
+    properties:
+      uuid:
+        $ref: '#/definitions/defaultUUID'
+      refid:
+        $ref: '#/definitions/defaultRefID'
+
+  defaultTimes:
+    type: object
+    properties:
+      time_created:
+        $ref: '#/definitions/defaultTimeCreated'
+      time_modified:
+        $ref: '#/definitions/defaultTimeModified'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# [begin] LIST DEFINITIONS
+#
+
+  # ---------------
+  # -- list objects
+
+  objListID:
+    type: object
+    properties:
+      list_id :
+        type: integer
+        description: Unique identifier for lists
+
+  objListName:
+      type: object
+      properties:
+        list_name:
+          description: The name identifying the list
+          type: string
+          maxLength: 55
+
+  objListDescription:
+      type: object
+      properties:
+        list_description:
+          type: string
+          maxLength: 255
+          description: A brief description of the list
+
+  objListStage:
+    type: object
+    properties:
+      list_stage:
+        description: All of the stages possible when loading and processing a list
+        type: string
+        enum: *enumListStage
+
+  objListType:
+    type: object
+    properties:
+      list_type:
+        description: The type of list
+        type: string
+        enum: *enumListType
+
+  objListStatus:
+    type: object
+    properties:
+      list_status:
+        description: The status of lists
+        type: string
+        enum: *enumApiStatus
+
+  objListStatusMessage:
+    type: object
+    properties:
+      list_status_message:
+        description: Detailed description of the status or error
+        type: string
+        maxLength: 255
+
+
+  objListSegmentsCount:
+    type: object
+    properties:
+      list_segments_count:
+        type: integer
+        default: 0
+        description: The total number of segments associated with this list
+
+  objListMembersCount:
+    type: object
+    properties:
+      list_members_count:
+        type: integer
+        default: 0
+        description: The total number of members (households) associated with all the segments in this list.
+
+  objListCanEdit:
+    type: object
+    properties:
+      list_can_edit:
+        type: boolean
+        description: If false then this list is not allowed to be modified
+        default: true
+
+  objListCanPull:
+    type: object
+    properties:
+      list_can_pull:
+        type: boolean
+        description: If true then a download of the segment members is allowed. This is reserved for list types audience.
+        default: false
+
+
+
+
+  # ---------------------
+  # -- list object groups
+
+  objListsSegmentMembersCount:
+    type: object
+    properties:
+      segment:
+        type: string
+        maxLength: 55
+        description: The name of the segment
+      type:
+        description: Optional type of segment either test or control.
+        type: string
+        enum:
+          - test
+          - control
+      count:
+        type: integer
+        description: Total count of all members in the segment
+        default: 0
+
+
+  arrListSegmentMembersCount:
+      type: array
+      description: An array of total member counts grouped by segment
+      items:
+        $ref: '#/definitions/objListsSegmentMembersCount'
+
+
+  # --------------------------
+  # -- list object collections
+
+
+  reqListWritable:
+    allOf:
+      - $ref: '#/definitions/objListName'
+      - $ref: '#/definitions/objListDescription'
+
+  resListSearch:
+    allOf:
+      - $ref: '#/definitions/objListID'
+      - $ref: '#/definitions/objListName'
+      - $ref: '#/definitions/objListDescription'
+      - $ref: '#/definitions/defaultTimeCreated'
+      - $ref: '#/definitions/objListType'
+      - $ref: '#/definitions/objListStage'
+      - $ref: '#/definitions/objListStatus'
+
+
+  resListsDetails:
+    allOf:
+      - $ref: '#/definitions/resListSearch'
+      - $ref: '#/definitions/objListStatusMessage'
+      - $ref: '#/definitions/objListCanEdit'
+      - $ref: '#/definitions/objListCanPull'
+      - $ref: '#/definitions/objListSegmentsCount'
+      - $ref: '#/definitions/objListMembersCount'
+      - $ref: '#/definitions/arrListSegmentMembersCount'
+      - $ref: '#/definitions/defaultUsageHistory'
+
+
+#
+# [end] LIST DEFINITIONS
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# ------------------------------------------------------------------
+
+  error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      fields:
+        type: string
+
+  errors:
+    type: array
+    items:
+      $ref: '#/definitions/error'
+
+
+
+
+
+# securityDefinitions:
+#  oauth2:
+#    type: oauth2
+#    scopes:
+#      read: "allow read"
+#    flow: application
